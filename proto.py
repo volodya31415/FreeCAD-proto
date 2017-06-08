@@ -110,6 +110,10 @@ def cone(a,b,h,angle=360, p=Vector(0,0,0), v=Vector(0,0,1)):
 	bx=Part.makeCone(a,b,h, p, v, angle)
 	return(center_object(bx))
 
+def sphere(radius):
+	s=Part.makeSphere(radius)
+	return(center_object(s))
+
 # A cylinder - same as hole, just to be more descriptive
 def ccylinder(diameter, depth):
 	return(hole(diameter, depth))
@@ -431,7 +435,6 @@ def tuning_fork(width=mm(30), length=mm(150), height=mm(6)):
 	c=c.removeSplitter()
 	return(c)
 
-		
 # Example function - design with tuning fork
 
 def design():
@@ -443,7 +446,6 @@ def design():
 	f2=new_part("fork2", translate(rotate(tuning_fork(length=mm(100)), Vz, 0), mm(40), 0, 0) , transparency=80, parent=Forks)
 
 	f3=new_part("fork3", translate(rotate(tuning_fork(length=mm(200)), Vz, 0), mm(80), 0, 0) , transparency=80, parent=Forks)
-
 
 def tuning_fork_drawing():
 	
