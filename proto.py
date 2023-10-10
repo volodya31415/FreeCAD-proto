@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
-#execfile("/home/volodya/Mechanics/FreeCAD-proto/proto.py")
-# Change the path above to point to location of this file
+# Change the path below to point to location of this file
 # Then you can copy and paste the line into FreeCAD
+# Newer FreeCAD:
+# exec(open("/home/volodya/Mechanics/FreeCAD-proto/proto.py").read())
+# Older FreeCAD:
+# execfile("/home/volodya/Mechanics/FreeCAD-proto/proto.py")
 
 import Part, FreeCAD, Drawing
 from FreeCAD import Base
@@ -324,7 +327,7 @@ def extreme_faces(shape, direction):
 # This is a very neat function - given a shape and a point in space it finds a nearest geometric element (FACE, EDGE or SOLIDS)
 # Very useful to find edges to chamfer for example
 def closest_object(shape, vtype, location):
-	vtype=string.upper(vtype)
+	vtype=vtype.upper()
 	if vtype=="FACE":
 		v=shape.Faces
 	elif vtype=="EDGE":
@@ -502,4 +505,4 @@ design()
 
 update_document()
 
-print "All done !"
+print("All done !")
