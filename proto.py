@@ -129,6 +129,22 @@ def polygon(vertices):
 		L.append(FreeCAD.Vector(vertices[i]))
 	p=Part.makePolygon(L)
 	return(center_object(p))
+
+#
+# func is func(x) of single real argument
+# example: return(sqrt(100+x*x))
+#
+def revolve_function(func, start, stop, delta=0.1, origin=(0, 0, 0), dir=(0, 0, 1), angle=360):
+	L=[]
+	z=start
+	for i in range(0, (int)((stop-start)/delta)):
+		z=i*delta+start
+		L.append(Part.LineSegment(Vector(func(z), 0, z), Vector(func(z+delta), 0, z+delta)).toShape())
+	L.append(Part.LineSegment(Vector(func(z+delta), 0, z+delta), Vector(0, 0, z+delta)).toShape())
+	L.append(Part.LineSegment(Vector(0, 0, z+delta), Vector(0, 0, 0)).toShape())
+	L.append(Part.LineSegment(Vector(func(0), 0, 0), Vector(0, 0, 0)).toShape())
+	revol=Part.Face(Part.Wire(L)).revolve(Vector(origin), Vector(dir), angle)
+	return(revol)
 	
 def helix(pitch, height, radius, angle=0):
 	h=Part.makeLongHelix(pitch, height, radius, angle)
