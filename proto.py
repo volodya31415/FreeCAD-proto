@@ -3,18 +3,18 @@
 # Then you can copy and paste the line into FreeCAD
 # Newer FreeCAD:
 # exec(open("/home/volodya/Mechanics/FreeCAD-proto/proto.py").read())
-# Older FreeCAD:
-# execfile("/home/volodya/Mechanics/FreeCAD-proto/proto.py")
 
-import Part, FreeCAD, Drawing
+import Part, FreeCAD
 from FreeCAD import Base
 from Draft import *
 import Draft
 from math import *
 import random
 import string
-import imp
+import importlib
 import Mesh
+import FemGui
+import ObjectsFem
 
 print("Script started.")
 
@@ -41,22 +41,27 @@ Vz=FreeCAD.Vector(0, 0, 1)
 # Define common hole parameters
 # You can use any names, so you can create classes of holes and adjust them later.
 #
-HolesDict={
-	'4x40':{'d_tap': inch(0.089) , 'd_clearance': inch(0.1160), 'd_head': mm(5.3), 'h_head': mm(4)},
-	'6x32':{'d_tap': inch(0.1065) , 'd_clearance': inch(0.1440), 'd_head': mm(5.6), 'h_head': mm(4)},
-	'8x32':{'d_tap': mm(3.45) , 'd_clearance': mm(4.14), 'd_head': mm(8.6), 'h_head': mm(4.2)},
-	'10x32': {'d_tap': mm(4.0386), 'd_clearance': mm(0.19784), 'd_head': inch(0.312), 'h_head': inch(0.190)},
-	 '1/4-20': {'d_tap': mm(5.10), 'd_clearance': mm(6.53), 'd_head': inch(0.375), 'h_head': inch(0.375)},
-	 'HeaterHole': {'d_clearance': mm(6), 'd_head': mm(6), 'h_head': mm(0)},
-	 'ThermistorHole': {'d_clearance': mm(2), 'd_head': mm(2), 'h_head': mm(0)},
-	 'FilamentHole': {'d_clearance': mm(2), 'd_head': mm(2), 'h_head': mm(0)},
-	 'M2.5': {'d_tap': mm(2.05), 'd_clearance': mm(2.5), 'd_head': mm(3), 'h_head':mm(3)},
-	 'M3': {'d_tap': mm(2.5), 'd_clearance': mm(3), 'd_head': mm(5), 'h_head':mm(5)},
-	 'M4': {'d_tap': mm(3.30), 'd_clearance': mm(4), 'd_head': mm(6), 'h_head':mm(6)},
-	 'M5': {'d_tap': mm(4.2), 'd_clearance': mm(5), 'd_head': mm(8.72), 'h_head': mm(5)},
-	 'M6x1': {'d_tap': mm(5.00), 'd_clearance': mm(6), 'd_head': mm(10.22), 'h_head':mm(8)},
-	 'M10x1.5': {'d_tap': mm(-5.00), 'd_clearance': mm(10), 'd_head': mm(16.27), 'h_head':mm(10.0)},
-	}
+HolesDict = {
+    '4x40': {'d_tap': inch(0.089), 'd_clearance': inch(0.1160), 'd_head': mm(5.3), 'h_head': mm(4)},
+    '6x32': {'d_tap': inch(0.1065), 'd_clearance': inch(0.1440), 'd_head': mm(5.6), 'h_head': mm(4)},
+    '8x32': {'d_tap': mm(3.45), 'd_clearance': mm(4.14), 'd_head': mm(8.6), 'h_head': mm(4.2)},
+    '10x32': {'d_tap': mm(4.0386), 'd_clearance': mm(0.19784), 'd_head': inch(0.312), 'h_head': inch(0.190)},
+    '1/4-20': {'d_tap': mm(5.10), 'd_clearance': mm(6.53), 'd_head': inch(0.375), 'h_head': inch(0.375)},
+    '1/4-28': {'d_tap': mm(5.4102), 'd_clearance': mm(6.53), 'd_head': inch(0.375), 'h_head': inch(0.375)},
+    'AnvilHole': {'d_clearance': mm(4.3), 'd_head': mm(7.5), 'h_head': mm(12)},
+    'HeaterHole': {'d_clearance': mm(6), 'd_head': mm(6), 'h_head': mm(0)},
+    'ThermistorHole': {'d_clearance': mm(2), 'd_head': mm(2), 'h_head': mm(0)},
+    'FilamentHole': {'d_clearance': mm(2), 'd_head': mm(2), 'h_head': mm(0)},
+    'NozzleHole': {'d_clearance': mm(10), 'd_head': mm(9), 'h_head': mm(0)},
+    'M2.5': {'d_tap': mm(2.05), 'd_clearance': mm(2.5), 'd_head': mm(3), 'h_head': mm(3)},
+    'M3': {'d_tap': mm(2.5), 'd_clearance': mm(3), 'd_head': mm(5), 'h_head': mm(5)},
+    'M4': {'d_tap': mm(3.30), 'd_clearance': mm(4), 'd_head': mm(6), 'h_head': mm(6)},
+    'M5': {'d_tap': mm(4.2), 'd_clearance': mm(5), 'd_head': mm(8.72), 'h_head': mm(5)},
+    'M6': {'d_tap': mm(5.00), 'd_clearance': mm(6), 'd_head': mm(10.22), 'h_head': mm(8)},
+    'M6x1': {'d_tap': mm(5.00), 'd_clearance': mm(6), 'd_head': mm(10.22), 'h_head': mm(8)},
+    'M8': {'d_tap': mm(6.80), 'd_clearance': mm(8), 'd_head': mm(12.22), 'h_head': mm(10)},
+    'M10x1.5': {'d_tap': mm(-5.00), 'd_clearance': mm(10), 'd_head': mm(16.27), 'h_head': mm(10.0)},
+}
 
 	
 #
@@ -75,15 +80,25 @@ HolesDict['ExternalMount']=HolesDict['1/4-20']
 # Thermal conductivity: W/mK
 #
 
-MaterialDict={'Al 2024':{'density': 2.78*1e3, 'Y': 73e9, 'CTE': 23.2e-6, 'Heat capacity': 875, 'Thermal conductivity': 121},
-		'Al 6061': {'density': 2.7*1e3, 'Y': 68.9e9, 'CTE': 23.6e-6, 'Heat capacity': 896, 
-		'Thermal conductivity': 167},
-	      'Al 7075':{'density': 2.71*1e3, 'Y': 71.7e9, 'CTE': 23.6e-6, 'Heat capacity': 960,
-	        'Thermal conductivity': 130},
-	      'BeCu B14 C175102': {'density': 8.77*1e3, 'Y': -1, 'CTE': 17.6e-6, 'Heat capacity': 419, 'Thermal conductivity': 207.7},
-	      'BeCu B25 C17200': {'density': 8.36*1e3, 'Y': 134e9, 'CTE': 17.8e-6, 'Heat capacity': 418.64, 'Thermal conductivity': 107.3},
-	      'Stainless 304': {'density': 8.03*1e3, 'Y': 193e9, 'CTE': 9.4e-6, 'Heat capacity': 500, 'Thermal conductivity': 16.2}
-	      }
+MaterialDict = {'Al 2024': {'density': 2.78*1e3, 'Y': 73e9, 'CTE': 23.2e-6, 'Heat capacity': 875, 'Thermal conductivity': 121},
+                'Al 6061': {'density': 2.7*1e3, 'Y': 68.9e9, 'CTE': 23.6e-6, 'Heat capacity': 896,
+                            'Thermal conductivity': 167},
+                'Al 7075': {'density': 2.71*1e3, 'Y': 71.7e9, 'CTE': 23.6e-6, 'Heat capacity': 960,
+                            'Thermal conductivity': 130},
+
+                'BeCu B14 C175102': {'density': 8.77*1e3, 'Y': -1, 'CTE': 17.6e-6, 'Heat capacity': 419, 'Thermal conductivity': 207.7},
+                'BeCu B25 C17200': {'density': 8.36*1e3, 'Y': 134e9, 'CTE': 17.8e-6, 'Heat capacity': 418.64, 'Thermal conductivity': 107.3},
+                'AlCu C95200': {'density': 8.64*1e3, 'Y': 103e9, 'CTE': 16.2e-6, 'Heat capacity': 377, 'Thermal conductivity': 50.4},
+                'Cu 99.95% C80100': {'density': 8.94*1e3, 'Y': 117e9, 'CTE': 16.9e-6, 'Heat capacity': 394, 'Thermal conductivity': 391},
+
+                'Gold 24K 99.7%': {'density': 19.32*1e3, 'Y': 79e9, 'CTE': 14.2e-6, 'Heat capacity': 129, 'Thermal conductivity': 310},
+
+                'Tungsten': {'density': 19.3*1e3, 'Y': 411e9, 'CTE': 4.5e-6, 'Heat capacity': 134, 'Thermal conductivity': 173},
+
+                'Stainless 304': {'density': 8.03*1e3, 'Y': 193e9, 'CTE': 9.4e-6, 'Heat capacity': 500, 'Thermal conductivity': 16.2},
+                'A 2': {'density': 7.86*1e3, 'Y': 200e9, 'CTE': 10.7e-6, 'Heat capacity': 461, 'Thermal conductivity': 26},
+                '4130': {'density': 7.872*1e3, 'Y': 205e9, 'CTE': 11.2e-6, 'Heat capacity': 477, 'Thermal conductivity': 42.7},
+                }
 
 ##
 ## Library of convenience functions
@@ -109,8 +124,12 @@ def torus(a,b):
 	return(center_object(bx))
 
 # cone, a and b are radii of top and bottom disks
-def cone(a,b,h,angle=360, p=Vector(0,0,0), v=Vector(0,0,1)):
+def cone(a,b,h,angle=360, p=Base.Vector(0,0,0), v=Base.Vector(0,0,1)):
 	bx=Part.makeCone(a,b,h, p, v, angle)
+	return(center_object(bx))
+
+def ball(r):
+	bx = Part.makeSphere(r)
 	return(center_object(bx))
 
 def sphere(radius):
@@ -125,7 +144,14 @@ def hole(diameter, depth):
 	hole=Part.makeCylinder(0.5*diameter, depth, Base.Vector(0, 0, 0), Base.Vector(0, 0, 1), 360)
 	return(center_object(hole))
 
-# vertices is a list of 3-tuples or FreeCAD.Vector()	
+def ccylinder_shell(d1, d2, depth, arc):
+	a = Part.makeCylinder(
+		0.5*d1, depth, Base.Vector(0, 0, -0.5*depth), Base.Vector(0, 0, 1), arc)
+	a = a.cut(Part.makeCylinder(
+		0.5*d2, depth, Base.Vector(0, 0, -0.5*depth), Base.Vector(0, 0, 1), arc))
+	return(a)
+
+# vertices is a list of 3-tuples or FreeCAD.Vector()
 def polygon(vertices):
 	L=[]
 	for i in range(0,len(vertices)):
@@ -206,8 +232,18 @@ def part_from_mesh(mesh, tolerance=0.1):
 	mpp.makeShapeFromMesh(mesh.Topology, tolerance)
 	return(mpp)
 
-def normalize_name(name):
-	return(name.replace(" ", "_"))
+name_id=1
+known_names={}
+
+def normalize_name(name, renumber=False):
+	global name_id
+	if not renumber:
+		return(name.replace(" ", "_"))
+
+	if not name in known_names:
+		known_names[name]="x"+str(name_id)
+		name_id=name_id+1
+	return(known_names[name])
 
 def use_document(name):
 	try:
@@ -243,6 +279,7 @@ def new_part(name, object=None, color=None, transparency=None, parent=None):
 		part.ViewObject.Transparency=transparency
 	#App.activeDocument().recompute()
 	update_document()
+	Gui.updateGui()
 	return(part)
 	
 def get_part(name):
@@ -375,6 +412,24 @@ def extrude(b, v0, v1, v2):
 	b.extrude(FreeCAD.Vector(v0, v1, v2))
 	return(b)
 	
+def fillet(x, radius, edges=None):
+	if edges is None:
+		return(x.makeFillet(radius, x.Edges))
+	elif isinstance(edges, Base.Vector):
+		el=[]
+		for e in x.Edges:
+			t=e.tangentAt(e.FirstParameter)
+			if (t*edges)*(t*edges)>=0.99999*(t*t)*(edges*edges):
+				el.append(e)
+		if len(el)<1 :
+			print("No edges found for direction:")
+			print(edges)
+			return(x)
+		else:
+			return(x.makeFillet(radius, el))
+	else:
+		return(x.makeFillet(radius, edges))
+
 def rotate(b, axis, angle, base=FreeCAD.Vector(0, 0, 0)):
 	b2=b.copy()
 	b2.rotate(FreeCAD.Vector(base), FreeCAD.Vector(axis), angle)
@@ -382,24 +437,25 @@ def rotate(b, axis, angle, base=FreeCAD.Vector(0, 0, 0)):
 
 
 
-def new_view(b, dir=(0.0, 0.0, 1.0), X=0, Y=0, scale=1.0, rotation=0, name="View", hidden_lines=False):
-	v=App.activeDocument().addObject('Drawing::FeatureViewPart', name)
-	#App.activeDocument().View.Source = b
-	#App.activeDocument().View.Direction = (0.0,0.0,1.0)
-	v.Source=b
-	v.Direction=dir
-	v.ShowHiddenLines=hidden_lines
-	v.X=scale*X
-	v.Y=scale*Y
-	v.Scale=scale
-	v.Rotation=rotation
-	#print(v.ViewResult)
+def new_view(drawing, b, dir=(0.0, 0.0, 1.0), X=0, Y=0, scale=1.0, rotation=0, name="View", hidden_lines=False):
+	v = App.activeDocument().addObject('TechDraw::DrawViewPart', name)
+	drawing.addView(v)
+	v.Direction = dir
+	v.XDirection = FreeCAD.Vector(1.000000000000, 0.000000000000, 0.000000000000)
+	v.Source = b
+	v.ScaleType=u"Custom"
+	v.Scale = scale
+	v.Rotation = rotation
+	v.X = scale*X
+	v.Y = scale*Y
 	return(v)
 	
 def new_drawing(name="Page"):
-	d=App.activeDocument().addObject('Drawing::FeaturePage', name)
-	#App.activeDocument().Page.Template=App.getResourceDir()+'Mod/Drawing/Templates/A3_Landscape.svg'
-	d.Template=App.getResourceDir()+'Mod/Drawing/Templates/A3_Landscape.svg'
+	d = App.activeDocument().addObject('TechDraw::DrawPage', name)
+	tmpl=App.activeDocument().addObject('TechDraw::DrawSVGTemplate', name+"_Template")
+	tmpl.Template = App.getResourceDir()+'Mod/TechDraw/Templates/A3_Landscape_TD.svg'
+	#print(tmpl.Template)
+	d.Template = tmpl
 	return(d)
 	
 
@@ -469,22 +525,41 @@ def design():
 def tuning_fork_drawing():
 	
 	d=new_drawing("tuning_fork_drawing")
-	bp=new_part("tuning_fork", tuning_fork(), transparency=80, parent=d)
+
+
+	bp=new_part("tuning_fork", tuning_fork(), transparency=80)
+
+	new_view(d, bp, X=inch(4)-get_measure("tuning_fork", InY), Y=inch(2)-get_measure("tuning_fork", LeftX), dir=(0.0, 0.0, 1.0), scale=1.0, rotation=90.0, hidden_lines=True)
 	
-	#d.addObject(new_view(bp, X=inch(1)-get_measure("bearing_plateH", LeftX), Y=inch(1)+get_measure("bearing_plateH", OutY), scale=0.5))
-	
-	d.addObject(new_view(bp, X=inch(1)-get_measure("tuning_fork", InY), Y=inch(2)-get_measure("tuning_fork", LeftX), dir=(0.0, 0.0, 1.0), scale=1.0, rotation=90.0, hidden_lines=True))
-	
-	d.addObject(new_view(bp, X=inch(9)-get_measure("tuning_fork", InY), Y=inch(2)-get_measure("tuning_fork", BottomZ), dir=(1.0, 0.0, 0.0), scale=1.0, rotation=-90.0, hidden_lines=True))
+	new_view(d, bp, X=inch(11)-get_measure("tuning_fork", InY), Y=inch(4)-get_measure("tuning_fork", BottomZ), dir=(1.0, 0.0, 0.0), scale=1.0, rotation=-90.0, hidden_lines=True)
 
-	d.addObject(new_view(bp, X=inch(9)-get_measure("tuning_fork", LeftX), Y=inch(7)-get_measure("tuning_fork", BottomZ), dir=(0.0, 1.0, 0.0), scale=1.0, rotation=-90.0, hidden_lines=True))
+	new_view(d, bp, X=inch(9)-get_measure("tuning_fork", LeftX), Y=inch(7)-get_measure("tuning_fork", BottomZ), dir=(0.0, 1.0, 0.0), scale=1.0, rotation=-90.0, hidden_lines=True)
 
 
-	d.addObject(new_view(bp, X=inch(1)-get_measure("tuning_fork", InY), Y=inch(9)-get_measure("tuning_fork", LeftX), dir=(1.0, 1.0, 1.0), scale=1.0, rotation=90.0, hidden_lines=True))
+	new_view(d, bp, X=inch(4)-get_measure("tuning_fork", InY), Y=inch(8)-get_measure("tuning_fork", LeftX), dir=(1.0, 1.0, 1.0), scale=1.0, rotation=90.0, hidden_lines=True)
 
-	#l=new_annotation(["Horizontal bearing plate"], text_position=(3.0, 0.0, 0.0), position=(1.0, 3.0, 0), name="MyNote")
+#	l=new_annotation(["Tuning fork"], text_position=(3.0, 0.0, 0.0), position=(1.0, 3.0, 0), name="MyNote")
 
 	App.ActiveDocument.recompute()
+
+# This prefills values making it easier to construct FEM analysis
+def tuning_fork_fem():
+	an1=ObjectsFem.makeAnalysis(FreeCAD.ActiveDocument, 'Analysis')
+	FemGui.setActiveAnalysis(an1)
+	an2=ObjectsFem.makeSolverCalculiXCcxTools(FreeCAD.ActiveDocument)
+	an2.EigenmodesCount=10
+	FemGui.getActiveAnalysis().addObject(an2)
+	mat=ObjectsFem.makeMaterialSolid(FreeCAD.ActiveDocument, 'SolidMaterial')
+	m=mat.Material
+	m["Name"]="Aluminum"
+	m["YoungsModulus"]="70000 MPa"
+	m["PoissonRatio"]="0.33"
+	m["ThermalConductivity"]="167 W/m/K"
+	m["Density"]="2700 kg/m^3"
+	m["ThermalExpansionCoefficient"]="24 um/m/K"
+	m["SpecificHeat"]="0.89 J/g/K"
+	mat.Material=m
+	an1.addObject(mat)
 
 use_document("Prototype")
 remove_all_parts()
@@ -497,10 +572,9 @@ remove_all_parts()
 
 design()
 
-#tuning_fork_drawing()
+tuning_fork_drawing()
 
-
-#mp=new_part("test_mesh", translate(rotate(rotate(part_from_mesh(load_mesh(u"/home/volodya/Mechanics/part.stl")), Vz, -90), Vy, 180), mm(24.5), mm(27), mm(37.75)))
+tuning_fork_fem()
 
 
 update_document()
